@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>S. Ghosh Academy - Portal</title>
+  <style>
+    * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 0; }
+    body { background-color: #f4f7f6; color: #333; padding: 20px; }
+    .container { max-width: 950px; margin: 0 auto; background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+    h1, h2, h3 { color: #1e3c72; text-align: center; margin-bottom: 15px; }
+    .card { background: #eef2f7; border-left: 5px solid #1e3c72; padding: 15px; margin-bottom: 20px; border-radius: 6px; }
+    input, select, button { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ccc; border-radius: 6px; font-size: 16px; }
+    button { background: #1e3c72; color: #fff; border: none; cursor: pointer; font-weight: bold; }
+    button:hover { background: #2a5298; }
+    .btn-danger { background: #dc3545; }
+    .btn-danger:hover { background: #bd2130; }
+    .hidden { display: none; }
+    .batch-badge { background: #28a745; color: white; padding: 4px 8px; border-radius: 4px; font-size: 14px; }
+    .folder-box { background: #fff; border: 1px solid #ddd; padding: 10px; margin: 10px 0; border-radius: 5px; }
+    .file-item { padding: 6px 10px; background: #f9f9f9; margin: 5px 0; border-left: 3px solid #ffc107; display: flex; justify-content: space-between; align-items: center; }
+  </style>
+
+  <!-- Firebase Scripts (v8) -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+</head>
+<body>
+
+<div class="container">
+  <h1>S. Ghosh Academy</h1>
+
+  <!-- ১. লগইন / রেজিস্ট্রেশন সেকশন -->
+  <div id="authSection">
+    <h2>স্টুডেন্ট লগইন / রেজিস্ট্রেশন</h2>
+    <div class="card">
+      <input type="text" id="stuName" placeholder="তোমার সম্পূর্ণ নাম">
+      <input type="tel" id="stuPhone" placeholder="হোয়াটসঅ্যাপ নম্বর (Login ID হিসেবে থাকবে)">
+      <select id="stuBatch">
+        <option value="">-- তোমার ব্যাচ নির্বাচন করো --</option>
+        <option value="Gram Panchayat">Gram Panchayat</option>
+        <option value="ICDS">ICDS</option>
+        <option value="ANM GNM">ANM GNM</option>
+        <option value="WBSSC Group C & D">WBSSC Group C & D</option>
+        <option value="WBPSC">WBPSC</option>
+        <option value="WBP & KP">WBP & KP</option>
+        <option value="Batch A">Batch A</option>
+        <option value="Batch B">Batch B</option>
+      </select>
+      <button onclick="registerStudent()">পোর্টালে প্রবেশ করো</button>
+      <button style="background:#6c757d; margin-top:10px;" onclick="openAdminLoginModal()">অ্যাডমিন প্যানেল</button>
+    </div>
+  </div>
+
+  <!-- ২. স্টুডেন্ট ড্যাশবোর্ড -->
+  <div id="dashboardSection" class="hidden">
+    <h2>স্বাগতম, <span id="displayName"></span>!</h2>
+    <p style="text-align:center; margin-bottom: 15px;">ব্যাচ: <span id="displayBatch" class="batch-badge"></span></p>
+
+    <div id="statusAlert" class="card" style="background:#fff3cd; border-color:#ffeeba;">
+      ⚠️ তোমার অ্যাকাউন্টটি এখনও অ্যাডমিন কর্তৃক অ্যাপ্রুভ হয়নি। অনুগ্রহ করে অপেক্ষা করো।
+    </div>
+
+    <div id="contentArea" class="hidden">
+      <!-- লাইভ ক্লাস সেকশন -->
+      <div class="card">
+        <h3>🔴 লাইভ ক্লাস</h3>
+        <p id="liveNotice">এখন কোনো লাইভ ক্লাস নেই।</p>
+        <a id="liveLinkBtn" href="#" target="_blank" class="hidden"><button style="background:#dc3545;">লাইভ ক্লাসে যোগ দাও</button></a>
+      </div>
+
+      <!-- রেকর্ডেড ক্লাস সেকশন -->
+      <div class="card">
+        <h3>🎥 রেকর্ডেড ক্লাস</h3>
+        <div id="studentRecordingsList">কোনো রেকর্ডেড ক্লাস নেই।</div>
+      </div>
+
+      <!-- মক টেস্ট লিংক সেকশন -->
+      <div class="card">
+        <h3>📝 মক টেস্ট লিংক</h3>
+        <div id="studentMockList">কোনো মক টেস্ট লিংক নেই।</div>
+      </div>
+
+      <!-- ফোল্ডারভিত্তিক পিডিএফ নোটস সেকশন -->
+      <div class="card">
+        <h3>📁 ফোল্ডার ও পিডিএফ নোটস</h3>
+        <div id="studentFoldersList">কোনো ফোল্ডার বা নোটস পাওয়া যায়নি।</div>
+      </div>
+    </div>
+    <button class="btn-danger" style="margin-top:20px;" onclick="logout()">লগ আউট করো</button>
+  </div>
+
+  <!-- ৩. অ্যাডমিন প্যানেল মোডাল (লগইন সহ) -->
+  <div id="adminLoginModal" class="card hidden">
+    <h3>অ্যাডমিন সিক্রেট লগইন</h3>
+    <input type="password" id="adminPass" placeholder="অ্যাডমিন পাসওয়ার্ড দাও">
+    <button onclick="verifyAdmin()">লগইন করো</button>
+    <button style="background:#6c757d;" onclick="closeAdmin()">ফিরে যাও</button>
+  </div>
+
+  <!-- ৪. মূল অ্যাডমিন ড্যাশবোর্ড -->
+  <div id="adminDashboard" class="hidden">
+    <h2>⚡ অ্যাডমিন কন্ট্রোল প্যানেল</h2>
+    
+    <div class="card">
+      <h3>স্টুডেন্ট অ্যাপ্রুভল ম্যানেজমেন্ট</h3>
+      <div id="pendingStudentsList">লোড হচ্ছে...</div>
+    </div>
+
+    <div class="card">
+      <h3>ব্যাচভিত্তিক কনটেন্ট আপলোড (৮টি ব্যাচ)</h3>
+      <select id="adminBatchSelect">
+        <option value="Gram Panchayat">Gram Panchayat</option>
+        <option value="ICDS">ICDS</option>
+        <option value="ANM GNM">ANM GNM</option>
+        <option value="WBSSC Group C & D">WBSSC Group C & D</option>
+        <option value="WBPSC">WBPSC</option>
+        <option value="WBP & KP">WBP & KP</option>
+        <option value="Batch A">Batch A</option>
+        <option value="Batch B">Batch B</option>
+      </select>
+
+      <!-- লাইভ ক্লাস সেটআপ -->
+      <h4 style="margin-top:10px;">লাইভ ক্লাস লিংক সেট করো</h4>
+      <input type="text" id="adminLiveTitle" placeholder="লাইভের বিষয় (যেমন: জীবনবিজ্ঞান ক্লাস)">
+      <input type="text" id="adminLiveUrl" placeholder="মিটিং লিংক (Jitsi / YouTube)">
+      <button onclick="saveLiveClass()">লাইভ আপডেট করুন</button>
+
+      <!-- রেকর্ডেড ক্লাস আপলোড -->
+      <h4 style="margin-top:15px;">রেকর্ডেড ক্লাস যোগ করো</h4>
+      <input type="text" id="adminRecTitle" placeholder="রেকর্ডেড ক্লাসের নাম">
+      <input type="text" id="adminRecUrl" placeholder="ভিডিও লিংক (YouTube / Drive)">
+      <button onclick="saveRecording()">রেকর্ডিং যোগ করুন</button>
+
+      <!-- মক টেস্ট লিংক আপলোড -->
+      <h4 style="margin-top:15px;">মক টেস্ট লিংক যোগ করো</h4>
+      <input type="text" id="adminMockTitle" placeholder="মক টেস্টের নাম">
+      <input type="text" id="adminMockUrl" placeholder="অনলাইন মক টেস্ট লিংক">
+      <button onclick="saveMock()">মক লিংক যোগ করুন</button>
+
+      <!-- ফোল্ডার ও ফোল্ডারের ভেতর ফাইল আপলোড -->
+      <h4 style="margin-top:15px;">ফোল্ডার তৈরি ও ফাইল (PDF) আপলোড</h4>
+      <input type="text" id="adminFolderName" placeholder="ফোল্ডারের নাম (যেমন: পরিমিতি নোটস)">
+      <input type="text" id="adminFileName" placeholder="পিডিএফ ফাইলের নাম">
+      <input type="text" id="adminFileUrl" placeholder="পিডিএফ ড্রাইভ লিংক">
+      <button onclick="saveFileToFolder()">ফোল্ডারে ফাইল আপলোড করুন</button>
+    </div>
+
+    <button class="btn-danger" onclick="logout()">অ্যাডমিন লগআউট</button>
+  </div>
+
+</div>
+
+<script>
+  // 👇 তোমার দেওয়া ফায়ারবেস কনফিগ এখানে সফলভাবে যুক্ত করা হলো
+  const firebaseConfig = {
+    apiKey: "AIzaSyChGABUiYtDPVr6Mbp2A4OIZC-0B5ErJwo",
+    authDomain: "study-class-a4b00.firebaseapp.com",
+    databaseURL: "https://study-class-a4b00-default-rtdb.firebaseio.com",
+    projectId: "study-class-a4b00",
+    storageBucket: "study-class-a4b00.firebasestorage.app",
+    messagingSenderId: "692998591183",
+    appId: "1:692998591183:web:8d86f0f58d6ce1aeca1dba",
+    measurementId: "G-CCTBX448B9"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const database = firebase.database();
+
+  // স্টুডেন্ট রেজিস্ট্রেশন
+  function registerStudent() {
+    const name = document.getElementById('stuName').value.trim();
+    const phone = document.getElementById('stuPhone').value.trim();
+    const batch = document.getElementById('stuBatch').value;
+
+    if (!name || !phone || !batch) {
+      alert("সবগুলো তথ্য সঠিকভাবে পূরণ করো!");
+      return;
+    }
+
+    const studentData = { name, phone, batch, approved: false };
+    
+    database.ref('students/' + phone).set(studentData).then(() => {
+      localStorage.setItem('userPhone', phone);
+      checkUserStatus(phone);
+    });
+  }
+
+  // স্টুডেন্ট স্ট্যাটাস চেক
+  function checkUserStatus(phone) {
+    database.ref('students/' + phone).on('value', (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        document.getElementById('authSection').classList.add('hidden');
+        document.getElementById('adminLoginModal').classList.add('hidden');
+        document.getElementById('dashboardSection').classList.remove('hidden');
+        document.getElementById('displayName').innerText = data.name;
+        document.getElementById('displayBatch').innerText = data.batch;
+
+        if (data.approved) {
+          document.getElementById('statusAlert').classList.add('hidden');
+          document.getElementById('contentArea').classList.remove('hidden');
+          loadStudentBatchData(data.batch);
+        } else {
+          document.getElementById('statusAlert').classList.remove('hidden');
+          document.getElementById('contentArea').classList.add('hidden');
+        }
+      }
+    });
+  }
+
+  // স্টুডেন্টের ড্যাশবোর্ডে ব্যাচভিত্তিক ডাটা লোড করা
+  function loadStudentBatchData(batch) {
+    // লাইভ ক্লাস
+    database.ref('batches/' + batch + '/live').on('value', (snapshot) => {
+      const val = snapshot.val();
+      const btn = document.getElementById('liveLinkBtn');
+      const notice = document.getElementById('liveNotice');
+      if (val && val.url) {
+        notice.innerText = "লাইভ চলছে: " + val.title;
+        btn.href = val.url;
+        btn.classList.remove('hidden');
+      } else {
+        notice.innerText = "এখন কোনো লাইভ ক্লাস নেই।";
+        btn.classList.add('hidden');
+      }
+    });
+
+    // রেকর্ডিং
+    database.ref('batches/' + batch + '/recordings').on('value', (snapshot) => {
+      const list = document.getElementById('studentRecordingsList');
+      list.innerHTML = "";
+      snapshot.forEach(child => {
+        const item = child.val();
+        list.innerHTML += `<div class="file-item"><span>🎥 ${item.title}</span><a href="${item.url}" target="_blank"><button style="padding:4px 10px; margin:0;">দেখুন</button></a></div>`;
+      });
+      if (!snapshot.exists()) list.innerHTML = "কোনো রেকর্ডেড ক্লাস নেই।";
+    });
+
+    // মক টেস্ট
+    database.ref('batches/' + batch + '/mocks').on('value', (snapshot) => {
+      const list = document.getElementById('studentMockList');
+      list.innerHTML = "";
+      snapshot.forEach(child => {
+        const item = child.val();
+        list.innerHTML += `<div class="file-item"><span>📝 ${item.title}</span><a href="${item.url}" target="_blank"><button style="padding:4px 10px; margin:0;">টেস্ট দিন</button></a></div>`;
+      });
+      if (!snapshot.exists()) list.innerHTML = "কোনো মক টেস্ট লিংক নেই।";
+    });
+
+    // ফোল্ডার ও ফাইল স্ট্রাকচার
+    database.ref('batches/' + batch + '/folders').on('value', (snapshot) => {
+      const container = document.getElementById('studentFoldersList');
+      container.innerHTML = "";
+      snapshot.forEach(folderSnap => {
+        const folderName = folderSnap.key;
+        let filesHtml = "";
+        folderSnap.forEach(fileSnap => {
+          const file = fileSnap.val();
+          filesHtml += `<div class="file-item"><span>📄 ${file.name}</span><a href="${file.url}" target="_blank"><button style="padding:4px 10px; margin:0; background:#28a745;">ডাউনলোড / দেখুন</button></a></div>`;
+        });
+        container.innerHTML += `<div class="folder-box"><h4>📁 ${folderName}</h4>${filesHtml || '<p style="font-size:13px; color:#777; margin-top:5px;">এই ফোল্ডারে কোনো ফাইল নেই।</p>'}</div>`;
+      });
+      if (!snapshot.exists()) container.innerHTML = "কোনো ফোল্ডার তৈরি করা হয়নি।";
+    });
+  }
+
+  // --- অ্যাডমিন সেকশন ---
+  function openAdminLoginModal() {
+    document.getElementById('authSection').classList.add('hidden');
+    document.getElementById('adminLoginModal').classList.remove('hidden');
+  }
+  function closeAdmin() {
+    document.getElementById('adminLoginModal').classList.add('hidden');
+    document.getElementById('authSection').classList.remove('hidden');
+  }
+  function verifyAdmin() {
+    const pass = document.getElementById('adminPass').value;
+    if (pass === "admin123") { // পাসওয়ার্ড তোমার পছন্দমতো বদলিয়ে নিতে পারো
+      document.getElementById('adminLoginModal').classList.add('hidden');
+      document.getElementById('adminDashboard').classList.remove('hidden');
+      loadPendingStudents();
+    } else {
+      alert("ভুল পাসওয়ার্ড!");
+    }
+  }
+
+  function loadPendingStudents() {
+    database.ref('students').on('value', (snapshot) => {
+      const list = document.getElementById('pendingStudentsList');
+      list.innerHTML = "";
+      snapshot.forEach(child => {
+        const s = child.val();
+        if (!s.approved) {
+          list.innerHTML += `<div class="file-item"><span><b>${s.name}</b> (${s.batch}) - ${s.phone}</span><button onclick="approveStudent('${s.phone}')" style="width:auto; padding:5px 15px; margin:0; background:#28a745;">অ্যাপ্রুভ করুন</button></div>`;
+        }
+      });
+      if (list.innerHTML === "") list.innerHTML = "কোনো নতুন পেন্ডিং স্টুডেন্ট নেই।";
+    });
+  }
+
+  function approveStudent(phone) {
+    database.ref('students/' + phone).update({ approved: true });
+  }
+
+  // অ্যাডমিন কর্তৃক কনটেন্ট আপলোড ফাংশনসমূহ
+  function getSelectedBatch() {
+    return document.getElementById('adminBatchSelect').value;
+  }
+
+  function saveLiveClass() {
+    const batch = getSelectedBatch();
+    const title = document.getElementById('adminLiveTitle').value;
+    const url = document.getElementById('adminLiveUrl').value;
+    database.ref('batches/' + batch + '/live').set({ title, url }).then(() => alert("লাইভ ক্লাস আপডেট করা হয়েছে!"));
+  }
+
+  function saveRecording() {
+    const batch = getSelectedBatch();
+    const title = document.getElementById('adminRecTitle').value;
+    const url = document.getElementById('adminRecUrl').value;
+    database.ref('batches/' + batch + '/recordings').push({ title, url }).then(() => alert("রেকর্ডিং যোগ করা হয়েছে!"));
+  }
+
+  function saveMock() {
+    const batch = getSelectedBatch();
+    const title = document.getElementById('adminMockTitle').value;
+    const url = document.getElementById('adminMockUrl').value;
+    database.ref('batches/' + batch + '/mocks').push({ title, url }).then(() => alert("মক টেস্ট লিংক যোগ করা হয়েছে!"));
+  }
+
+  // ফোল্ডারের ভেতর ফাইল আপলোড সিস্টেম
+  function saveFileToFolder() {
+    const batch = getSelectedBatch();
+    const folderName = document.getElementById('adminFolderName').value.trim();
+    const name = document.getElementById('adminFileName').value;
+    const url = document.getElementById('adminFileUrl').value;
+
+    if (!folderName || !name || !url) {
+      alert("ফোল্ডারের নাম এবং ফাইলের বিবরণ দিন!");
+      return;
+    }
+
+    database.ref('batches/' + batch + '/folders/' + folderName).push({ name, url }).then(() => {
+      alert("ফোল্ডারের ভেতরে সফলভাবে পিডিএফ ফাইল আপলোড করা হয়েছে!");
+      document.getElementById('adminFolderName').value = "";
+      document.getElementById('adminFileName').value = "";
+      document.getElementById('adminFileUrl').value = "";
+    });
+  }
+
+  function logout() {
+    localStorage.removeItem('userPhone');
+    location.reload();
+  }
+
+  // অটো লগইন চেক
+  const savedPhone = localStorage.getItem('userPhone');
+  if (savedPhone) {
+    checkUserStatus(savedPhone);
+  }
+</script>
+
+</body>
+</html>
